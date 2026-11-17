@@ -91,7 +91,7 @@ app.post('/api/report', async (req, res) => {
 if (process.env.NODE_ENV === 'production') {
   const dist = path.resolve(here, '../dist');
   app.use(express.static(dist));
-  app.get('*', (_req, res) => res.sendFile(path.join(dist, 'index.html')));
+  app.get(/.*/, (_req, res) => res.sendFile(path.join(dist, 'index.html')));
 }
 
 app.listen(port, () => console.log(`Pathfinder API listening on http://localhost:${port} (${ai ? model : 'demo mode: no API key'})`));
