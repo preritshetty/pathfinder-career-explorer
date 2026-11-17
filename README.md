@@ -2,7 +2,7 @@
 
 A student-friendly career exploration questionnaire for grades 5–12. Students answer ten starter questions, receive five AI-personalised follow-ups, and get a report with exploration areas, possible career examples, strengths, and practical next steps.
 
-The report is a conversation starter, not an aptitude test or a career prediction. Pathfinder does not save survey responses to a database; answers stay in the current browser session and are sent to the server only to create the next questions and report.
+The report is a conversation starter, not an aptitude test or a career prediction. Pathfinder does not save survey responses to a database. With AI enabled, answers are sent to the app server and Google Gemini to create the next questions and report. The optional student name is not sent to Gemini.
 
 ## Run locally
 
