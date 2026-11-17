@@ -18,6 +18,18 @@ function jsonFrom(text) {
   return JSON.parse(clean);
 }
 
+async function generateWithRetry(request) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await ai.models.generateContent(request);
+    } catch (error) {
+      const unavailable = error?.status === 503 || /"code":503|high demand|UNAVAILABLE/i.test(error?.message || '');
+      if (!unavailable || attempt >= 2) throw error;
+      await new Promise(resolve => setTimeout(resolve, 700 * (attempt + 1)));
+    }
+  }
+}
+
 function fallbackQuestions(answers) {
   const words = Object.values(answers || {}).flatMap(a => Array.isArray(a) ? a : [a]).filter(Boolean).join(' ').toLowerCase();
   const themes = [
@@ -63,7 +75,7 @@ app.post('/api/followups', async (req, res) => {
   if (!ai) return res.json({ questions: fallbackQuestions(answers), demo: true });
   try {
     const prompt = `You are a thoughtful career exploration guide for students in grades 5–12. Based on the student's first questionnaire answers, create exactly 5 short, age-appropriate follow-up questions that help understand interests, preferred activities, values, strengths, and ways they like to learn. Keep questions neutral and open-minded; do not assume a career, socioeconomic background, ability, or gender. Do not ask for personal contact details, exact location, school name, health details, or other sensitive information. Include 2–3 options for choice questions, plus at most one optional short-answer question. Each item must have id (f1-f5), title, purpose, type (single, multi, or text), options (array, empty for text). Return only valid JSON as {"questions":[...]}. Student grade: ${student?.grade || 'not specified'}. Answers: ${JSON.stringify(answers)}`;
-    const result = await ai.models.generateContent({ model, contents: prompt, config: { responseMimeType: 'application/json' } });
+    const result = await generateWithRetry({ model, contents: prompt, config: { responseMimeType: 'application/json' } });
     const parsed = jsonFrom(result.text);
     if (!Array.isArray(parsed.questions) || parsed.questions.length !== 5) throw new Error('Unexpected question format');
     res.json({ questions: parsed.questions.map((q, i) => ({ id: `f${i + 1}`, title: String(q.title || '').slice(0, 220), purpose: String(q.purpose || 'A little more about what you enjoy').slice(0, 100), type: ['single', 'multi', 'text'].includes(q.type) ? q.type : 'single', options: Array.isArray(q.options) ? q.options.slice(0, 6).map(o => String(o).slice(0, 150)) : [] })), demo: false });
@@ -79,7 +91,7 @@ app.post('/api/report', async (req, res) => {
   if (!ai) return res.json({ report: makeDemoReport(answers, student), demo: true });
   try {
     const prompt = `Create a warm, encouraging career exploration report for a student in grades 5–12 using the answers below. Be specific to the answers, but never present this as a diagnosis, aptitude test, prediction, ranking, or final career recommendation. Acknowledge uncertainty and that interests develop. Do not infer sensitive traits. Include 3 exploration areas, each with a short answer-based reason and 2–3 example careers; 3 observable strengths stated tentatively; 3 low-cost, age-appropriate things to try next; a short reassuring summary. Mention career examples as possibilities, not prescriptions. Use plain language for a young reader. Do not ask for or reveal personal data. Return only JSON: {"headline":"...","summary":"...","strengths":["..."],"areas":[{"title":"...","why":"...","careers":["...","..."]}],"tryNext":["...","...","..."],"note":"..."}. Student: ${JSON.stringify({ grade: student?.grade || '' })}. Answers: ${JSON.stringify(answers)}`;
-    const result = await ai.models.generateContent({ model, contents: prompt, config: { responseMimeType: 'application/json' } });
+    const result = await generateWithRetry({ model, contents: prompt, config: { responseMimeType: 'application/json' } });
     const report = jsonFrom(result.text);
     if (!Array.isArray(report.areas) || !Array.isArray(report.strengths) || !Array.isArray(report.tryNext)) throw new Error('Unexpected report format');
     res.json({ report, demo: false });

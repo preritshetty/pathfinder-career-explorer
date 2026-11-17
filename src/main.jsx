@@ -4,6 +4,12 @@ import { ArrowLeft, ArrowRight, ArrowUpRight, Check, Compass, Heart, Leaf, Light
 import { questions } from './questions';
 import './styles.css';
 
+async function readApiResponse(response) {
+  const body = await response.text();
+  try { return body ? JSON.parse(body) : { error: 'The server returned an empty response. Please try again.' }; }
+  catch { return { error: 'The server returned an unreadable response. Please try again.' }; }
+}
+
 function App() {
   const [stage, setStage] = useState('welcome');
   const [student, setStudent] = useState({ name: '', grade: '' });
@@ -39,7 +45,7 @@ function App() {
       setBusy(true);
       try {
         const response = await fetch('/api/followups', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ answers: Object.fromEntries(questions.map(q => [q.id, answers[q.id] ?? ''])), student }) });
-        const data = await response.json();
+        const data = await readApiResponse(response);
         if (!response.ok) throw new Error(data.error || 'Could not make the next questions.');
         setFollowups(data.questions); setDemo(data.demo); setIndex(0); setStage('followup');
       } catch (e) { setError(e.message); }
@@ -48,7 +54,7 @@ function App() {
     setBusy(true);
     try {
       const response = await fetch('/api/report', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ answers: { ...answers, ...Object.fromEntries(questions.map(q => [q.id, answers[q.id] ?? ''])) }, student }) });
-      const data = await response.json();
+      const data = await readApiResponse(response);
       if (!response.ok) throw new Error(data.error || 'Could not create your report.');
       setReport(data.report); setDemo(data.demo); setStage('report');
     } catch (e) { setError(e.message); }
