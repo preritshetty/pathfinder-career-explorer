@@ -16,3 +16,31 @@ test('detailed reports use JSON mode with explicit shape instructions and strict
  await createGenerator(ai,{model:'primary'})('Write report',reportSchema);
  assert.equal(request.config.responseMimeType,'application/json');assert.equal(request.config.responseJsonSchema,undefined);assert.match(request.contents,/dimensions/);assert.match(request.contents,/exactly 6 entries/);
 });
+
+test('a model-generated correction repairs invalid question content before returning it',async()=>{
+ const {generatedQuestions}=await import('./fixtures.js');
+ const {questionSchema,validateGeneratedQuestions}=await import('../server/question-contract.js');
+ const calls=[],delays=[];
+ const ai={models:{generateContent:async req=>{calls.push(req);return {text:JSON.stringify(calls.length===1?{questions:[]}:generatedQuestions)};}}};
+ const result=await createGenerator(ai,{model:'primary',sleep:async ms=>delays.push(ms),random:()=>0})('Make questions',questionSchema,{validate:validateGeneratedQuestions});
+ assert.equal(result.questions.length,10);assert.equal(result._attempts,2);assert.match(calls[1].contents,/previous response failed validation/);assert.match(calls[1].contents,/exactly 10/);assert.deepEqual(delays,[2000]);
+});
+test('persistent invalid AI output is never replaced with static content',async()=>{
+ const {questionSchema,validateGeneratedQuestions}=await import('../server/question-contract.js');let calls=0;
+ const ai={models:{generateContent:async()=>{calls++;return {text:'{"questions":[]}'};}}};
+ await assert.rejects(()=>createGenerator(ai,{model:'primary',sleep:async()=>{}})('Make questions',questionSchema,{validate:validateGeneratedQuestions}),/Invalid questions/);
+ assert.equal(calls,2);
+});
+test('temporary errors use bounded exponential backoff without echoing raw error text',async()=>{
+ let calls=0;const delays=[];
+ const ai={models:{generateContent:async()=>{calls++;throw {status:503,message:'PRIVATE_ERROR_PAYLOAD'};}}};
+ await assert.rejects(()=>createGenerator(ai,{model:'primary',sleep:async n=>delays.push(n),random:()=>0})('test',{properties:{}}));assert.equal(calls,3);assert.deepEqual(delays,[2000,4000]);
+});
+test('fenced JSON can be read but non-JSON content must be regenerated',async()=>{
+ const ai={models:{generateContent:async()=>({text:'```json\n{"ok":true}\n```'})}};
+ assert.equal((await createGenerator(ai,{model:'primary'})('test',{properties:{}})).ok,true);
+});
+test('network errors are retried even when the error also has a generic name',async()=>{
+ let calls=0;const ai={models:{generateContent:async()=>{if(++calls===1)throw new Error('fetch failed');return {text:'{"ok":true}'};}}};
+ const value=await createGenerator(ai,{model:'primary',sleep:async()=>{}})('test',{properties:{}});assert.equal(value.ok,true);assert.equal(calls,2);
+});

@@ -10,7 +10,7 @@ import {createGenerator} from './generation.js';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const key=process.env.GEMINI_API_KEY?.trim();
 const ai=key&&!/^(your_|paste_|replace_)/i.test(key)?new GoogleGenAI({apiKey:key}):null;
-const model=process.env.GEMINI_MODEL||'gemini-3.5-flash-lite';
+const model=process.env.GEMINI_MODEL||'gemini-3.1-flash-lite';
 const generate=ai?createGenerator(ai,{model,fallbackModel:process.env.GEMINI_FALLBACK_MODEL||''}):undefined;
 // Signing material contains no student data and keeps refresh recovery valid across restarts.
 mkdirSync(path.join(root,'.data'),{recursive:true,mode:0o700});

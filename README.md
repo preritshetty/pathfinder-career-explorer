@@ -88,7 +88,8 @@ Open `.env` in a text editor and replace the placeholder key:
 
 ```dotenv
 GEMINI_API_KEY=PASTE_YOUR_ACTUAL_GOOGLE_AI_STUDIO_KEY_HERE
-GEMINI_MODEL=gemini-3.5-flash-lite
+GEMINI_MODEL=gemini-3.1-flash-lite
+GEMINI_FALLBACK_MODEL=gemini-3.5-flash-lite
 PORT=3001
 ```
 
@@ -227,7 +228,7 @@ Open [http://localhost:3001](http://localhost:3001) (or the port in `.env`). In 
 
 Normal completion makes two provider calls: one generates ten new scenario questions and six choices per question; one writes the report's summary, explanations, projects, day-in-the-life snapshots, reflections and plan. Both request structured JSON mode with explicit shape instructions to avoid Gemini constrained-decoder complexity limits for this larger survey. The server enforces exact counts, six trait options per generated question, the full detailed report schema and valid evidence IDs locally. Every scenario must contain one choice for each of six interest traits. Generated options are checked structurally, independently shuffled using a random seed, and signed by the server; they are not ordered by the starter profile.
 
-Code chooses the career areas; AI explains them. Transient 429/503 failures get one bounded retry. Optionally set `GEMINI_FALLBACK_MODEL` to another compatible model that your account can access to use it on temporary overload; this is disabled by default and does not change projects or keys. Check that model’s current pricing and quota before enabling it. If generation fails or output is invalid, the API returns an explicit retry error and the browser keeps answers. It does not label static text as AI. Duplicate requests share in-flight work and successful results are cached by a SHA-256 digest for 30 minutes (100-entry memory cap). Retries and cache expiration can add requests beyond the normal two. Responses include `generation.provider`, `generation.cacheHit` and `generation.generatedAt` so reused AI content can be distinguished from fresh generation.
+Code chooses the career areas; AI explains them. Generation uses bounded exponential backoff: up to three attempts for temporary service failures, one retry on the same model for quota errors, and at most one model-generated correction for invalid JSON or content. Both stages still require successful AI output; no static replacement is shown. Optionally set `GEMINI_FALLBACK_MODEL` to another compatible model that your account can access to use it on temporary overload; the example configuration uses `gemini-3.5-flash-lite` for this and does not change projects or keys. Leave the value blank to disable model fallback. Check that model’s current pricing and quota before enabling it. If generation fails or output is invalid, the API returns an explicit retry error and the browser keeps answers. It does not label static text as AI. Duplicate requests share in-flight work and successful results are cached by a SHA-256 digest for 30 minutes (100-entry memory cap). Retries and cache expiration can add requests beyond the normal two. Responses include `generation.provider`, `generation.cacheHit` and `generation.generatedAt` so reused AI content can be distinguished from fresh generation.
 
 ## Scoring
 
