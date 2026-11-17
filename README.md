@@ -1,30 +1,35 @@
 # Pathfinder
 
-A student-friendly career exploration questionnaire for grades 5–12. Students answer ten starter questions, receive five AI-personalised follow-ups, and get a report with exploration areas, possible career examples, strengths, and practical next steps.
+A career exploration prototype for grades 5–12: ten starter questions, five scenario follow-ups, and an explanation of a reproducible interest profile.
 
-The report is a conversation starter, not an aptitude test or a career prediction. Pathfinder does not save survey responses to a database. With AI enabled, answers are sent to the app server and Google Gemini to create the next questions and report. The optional student name is not sent to Gemini.
+## Run
 
-## Run locally
+Use Node.js 20+, run `npm install`, copy `.env.example` to `.env`, add a server-side key if appropriate, and run `npm run dev`. Without a key the same survey and scoring work with built-in questions and report guidance. `npm run build` followed by `npm start` serves a production build. Never commit `.env`.
 
-1. Install Node.js 20 or newer.
-2. Run `npm install`.
-3. Copy `.env.example` to `.env` and add your Google AI Studio API key.
-4. Run `npm run dev` and open the local URL shown by Vite (usually `http://localhost:5173`).
+## Scoring and reports
 
-Without a key, the complete experience runs in demo mode with sample follow-up questions and a sample report. AI generation uses `gemini-3.5-flash-lite` by default; set `GEMINI_MODEL` in `.env` to another model enabled for your AI Studio account.
+`src/profile.js` contains explicit RIASEC-inspired editorial option tags. This is not a validated Holland assessment. First choice contributes 2 points, second choice 1; multi-trait options split points equally. Neutral/unsure answers earn no points. Free text never affects scoring. Ties use a stable R/I/A/S/E/C order and are exposed as uncertainty rather than interpreted as significant differences. The chart scales each trait relative to the student's highest trait; it is not an aptitude score, percentile or comparison with peers.
 
-## Production build
+The five scenario questions preserve their tagged options; AI may simplify their wording. All six traits remain available in each scenario, ordered by the starter profile, so the survey can explore ties without excluding less prominent interests. Final scores include these follow-up choices. Code selects the top three areas plus a distinct fourth wildcard; AI explains rather than selects them. Sparse evidence remains visible through the answer references. Evidence links prove which options contributed, not that an AI interpretation is necessarily correct.
 
-Run `npm run build`, then `npm start`. The Express server serves the built app on port 3001 by default. Set `PORT` to change it.
+Grades 5–7 get activities without career labels or degree routes. Grades 8–10 get career examples and skills. Grades 11–12 also get broad study routes. Entrance exams and eligibility are omitted because no country or curriculum is collected. Reports include projects, day-in-the-life examples, four weekly actions, parent/teacher discussion and browser print/save PDF.
 
-## API
+## AI, privacy and availability
 
-- `GET /api/health` — server and AI configuration status.
-- `POST /api/followups` — creates exactly five follow-up questions from the first ten answers.
-- `POST /api/report` — creates the final exploration report from all answers.
+Normal completion makes two generation requests: all follow-up titles in one, report writing in another. Both request JSON schemas. Transient 429/503 failures get one bounded retry; errors or malformed outputs fall back to built-in content, with a visible notice. Repeating a survey or retrying may make extra requests. There is no second key or quota circumvention.
 
-The API key is only read on the server and must never be added to frontend code or committed to Git.
+The server whitelists canonical selected options and grade-band context for model input. Names, free-text notes, school information and client-provided question text are excluded. Notes remain in browser memory and are not interpreted by AI. No database or answer logging is used. Refreshing clears the session.
 
-## Report features
+**Provider restriction:** Google's Gemini API terms restrict API clients directed towards or likely to be accessed by under-18s. This prototype must not be deployed to students using the AI Studio API without resolving that provider restriction; anonymisation does not remove it. See https://ai.google.dev/gemini-api/terms. Synthetic developer testing does not establish suitability for deployment. Choose a provider/product with appropriate terms before student rollout.
 
-Reports receive the full question-and-answer context, including written interests and generated follow-up question text. Each exploration area includes answer references, example careers, a small project and a reflection question. A four-week plan, discussion prompt and printable layout support continued exploration. JSON output is checked for required sections and valid answer references; this checks structure rather than proving the AI's interpretation is correct.
+## Checks
+
+`node --test tests/profile.test.js` covers tagging, rank weights, neutral answers, stable scoring, scenarios, wildcard selection and grade routes. `npm run build` compiles the app.
+
+## Endpoints
+
+- `GET /api/health`: configuration status (never the key).
+- `POST /api/followups`: `{student:{grade}, answers}` with all ten starter answers.
+- `POST /api/report`: same body with all five follow-up answers.
+
+Follow-up options are reconstructed from the starter profile on the server. Requests with invalid selections or missing answers receive 400; AI outages return a usable local result labelled `source: local`.

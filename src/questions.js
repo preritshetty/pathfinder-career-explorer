@@ -10,3 +10,5 @@ export const questions = [
   { id: 'q9', title: 'If you could create or build something of your own, what would you choose?', purpose: 'Things you would like to make', type: 'single', options: ['A mobile app, website or video game', 'A robot, machine or electronic device', 'A business, brand or product', 'A painting, film, music composition or design', 'A scientific invention or experiment', 'A solution that helps people or society', 'Something related to animals, plants or nature', 'Something else (tell us about it)'], textOption: 7 },
   { id: 'q10', title: 'Have you thought about what you might want to become in the future?', purpose: 'Your career ideas so far', type: 'single', options: ['Yes, I already have a specific career in mind', 'I have two or three career options in mind', 'I have a general area of interest but no specific career', 'I have no idea yet, and I want to explore different possibilities'], textOption: [0, 1, 2], textPrompt: 'What careers or areas are you thinking about? (Optional)' },
 ];
+
+questions.forEach(q => { if (q.id !== 'q10') q.type = 'ranked'; });
