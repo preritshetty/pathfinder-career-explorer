@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { logAiFailure } from './ai-errors.js';
 import express from 'express';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -55,6 +56,7 @@ function validateRequest(req){
 function context(answers,bank){return [...questions,...bank].filter(q=>answers[q.id]).map(q=>({id:q.id,question:q.title,answer:answers[q.id]}));}
 function localReport(profile,areas,grade){
  return {
+ gradeBand:gradeBand(grade),
  explorationOnly:grade<=7,
  headline:'Your interests, with room to grow',summary:`Your choices give the strongest clues around ${profile.ranking.slice(0,2).map(t=>traits[t].toLowerCase()).join(' and ')}. These are starting points for activities to try.`,
  strengths:profile.ranking.slice(0,3).map(t=>`You may enjoy ${traits[t].toLowerCase()} activities; experience can help you find out more.`),
@@ -81,8 +83,9 @@ app.post('/api/followups',async(req,res)=>{
   const result=await generate(`Rewrite these five scenario questions for grade band ${gradeBand(grade)}. Use plain language. Keep the scenario meaning and option compatibility exactly; return only five complete question titles. Do not introduce new tasks that the options would not fit. These scenarios compare close interests; mixed interests are not contradictions. Prioritise clarity around these uncertainty clues: ${JSON.stringify(base.uncertainty)}. Profile: ${JSON.stringify(base.scores)}. Scenarios: ${JSON.stringify(bank.map(q=>({title:q.title,options:q.options})))}. Anonymous selected options: ${JSON.stringify(context(answers,[]))}`,followupSchema);
   if(!Array.isArray(result.titles)||result.titles.length!==5||!result.titles.every(t=>typeof t==='string'&&t.trim()&&t.length<220))throw Error('Invalid questions');
   res.json({questions:bank.map((q,i)=>({...q,title:result.titles[i]})),profile:base,source:'ai'});
- }catch{
-  res.json({questions:bank,profile:base,source:'local',notice:'AI is unavailable right now. Your answers are safe to continue with the built-in scenarios.'});
+ }catch(error){
+  const diagnostic=logAiFailure('followups',error);
+  res.json({questions:bank,profile:base,source:'local',diagnostic:{code:diagnostic.code},notice:diagnostic.reason.replace('Your report uses built-in guidance.', 'You can continue with the built-in scenarios.').replace('Your report uses the same computed interests with built-in guidance.', 'You can continue with the built-in scenarios.')});
  }
 });
 app.post('/api/report',async(req,res)=>{
@@ -92,13 +95,13 @@ app.post('/api/report',async(req,res)=>{
  // Four directions always: top three plus one distinct, clearly labelled wildcard.
 
  const fallback=localReport(profile,areas,grade);const evidence=context(answers,bank);
- if(!ai)return res.json({report:fallback,profile,evidence,source:'local'});
+ if(!ai)return res.json({report:fallback,profile,evidence,source:'local',notice:'No AI key is configured. This report uses built-in guidance.'});
  try{
-  const w=await generate(`Explain a deterministic editorial interest profile for grade band ${gradeBand(grade)}. This is NOT a validated assessment or an ability measurement. Never exclude a career or claim aptitude. The code has already selected the four areas and all examples: do not replace, rank or add areas or careers in your prose. Explain each area in array order using only the supplied selected-option evidence. Do not invent achievements or assume personal traits. Last area is a wildcard: call it an experiment and acknowledge limited evidence when applicable. Mixed interests can complement each other, not contradict. No scores, percentages, salary or entrance-exam claims. Grades 5–7: simple playful exploration only. Grades 8–10: skills and projects. Grades 11–12: broad degree routes are supplied; do not assert eligibility or name exams without a country/curriculum. Give three immediate actions in the next 30 days, four doable weekly actions with outputs, and a practical parent/teacher discussion question. Keep question IDs out of prose. Return only the requested JSON fields. Areas and evidence: ${JSON.stringify(areas)}. Interest profile and uncertainty: ${JSON.stringify(profile)}. Anonymous choices (first choice has greater weight): ${JSON.stringify(evidence)}`,reportSchema);
+  const w=await generate(`Explain a deterministic editorial interest profile for grade band ${gradeBand(grade)}. This is NOT a validated assessment or an ability measurement. Never exclude a career or claim aptitude. The code has already selected the four areas and all examples: do not replace, rank or add areas or careers in your prose. Explain each area in array order using only the supplied selected-option evidence. Do not invent achievements or assume personal traits. Last area is a wildcard: call it an experiment and acknowledge limited evidence when applicable. Mixed interests can complement each other, not contradict. No scores, percentages, salary or entrance-exam claims. Grades 5–7: short sentences, familiar words and playful activities only; do not mention professions, degrees or academic decisions anywhere in your writing. Grades 8–10: skills and projects. Grades 11–12: broad degree routes are supplied; do not assert eligibility or name exams without a country/curriculum. Give three immediate actions in the next 30 days, four doable weekly actions with outputs, and a practical parent/teacher discussion question. Keep question IDs out of prose. Return only the requested JSON fields. Areas and evidence: ${JSON.stringify(areas)}. Interest profile and uncertainty: ${JSON.stringify(profile)}. Anonymous choices (first choice has greater weight): ${JSON.stringify(evidence)}`,reportSchema);
   validateWriting(w);
   const report={...fallback,...w,areas:areas.map((a,i)=>({...a,why:w.explanations[i],reflection:w.reflections[i]}))};delete report.explanations;delete report.reflections;
   res.json({report,profile,evidence,source:'ai'});
- }catch{res.json({report:fallback,profile,evidence,source:'local',notice:'AI is unavailable right now. This report uses your computed interests and built-in guidance.'});}
+ }catch(error){const diagnostic=logAiFailure('report',error);res.json({report:fallback,profile,evidence,source:'local',diagnostic:{code:diagnostic.code},notice:diagnostic.reason});}
 });
 if(process.env.NODE_ENV==='production'){
  const dist=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../dist');app.use(express.static(dist));app.get(/.*/,(_req,res)=>res.sendFile(path.join(dist,'index.html')));
