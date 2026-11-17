@@ -16,9 +16,24 @@ const scenarios = [
  ['A school garden needs help. What would you like to do?', ['Plant and build supports','Study what helps plants grow','Design signs and displays','Show younger students around','Convince others to take part','Track supplies and watering']],
  ['Your first project did not work. What would you do next?', ['Adjust the parts and try again','Compare results to find the cause','Imagine a different design','Discuss it with a teammate','Set a new goal for the team','Write a checklist for another attempt']]
 ];
-export function questionBank(profile) {
- const order = [...profile.ranking];
- return scenarios.map(([title, options], i) => ({ id:`f${i+1}`, title, purpose:'Try a different situation', type:'ranked', options:order.map(t=>options[Object.keys(traits).indexOf(t)]), optionTraits:order }));
+// A seed controls presentation only; it must never depend on the student's profile.
+export function seededShuffle(items, seed) {
+ let n=2166136261;for(const c of String(seed))n=Math.imul(n^c.charCodeAt(0),16777619)>>>0;
+ const result=[...items];
+ for(let i=result.length-1;i>0;i--){n=(Math.imul(n,1664525)+1013904223)>>>0;const j=n%(i+1);[result[i],result[j]]=[result[j],result[i]];}
+ return result;
+}
+// Retained as a developer fixture, never substituted for required AI generation.
+export function questionBank() {
+ return scenarios.map(([title, options],i)=>({id:`f${i+1}`,title,purpose:'Try a different situation',type:'ranked',options,optionTraits:Object.keys(traits)}));
+}
+export function maximumScores(followups=[]) {
+ const max=Object.fromEntries(Object.keys(traits).map(t=>[t,0]));
+ for(const q of [...questions,...followups]) for(const trait of Object.keys(traits)) {
+  const weights=q.options.map((_,i)=>{const tags=q.id.startsWith('q')?optionTags[q.id][i]:q.optionTraits?.[i]||'';return tags.includes(trait)?1/tags.length:0;}).sort((a,b)=>b-a);
+  max[trait]+=2*(weights[0]||0)+(q.type==='ranked'?(weights[1]||0):0);
+ }
+ return max;
 }
 export const clusterCatalog = {
  R:{title:'Building & practical design',careers:['Mechanical designer','Technician','Product maker'],activity:'Make a cardboard model of a useful object. Test it, change one part, and explain what improved.',dayInLife:'A designer may sketch a part, build a model and test how it works.',degrees:['Mechanical engineering','Product design','Technical or vocational training']},
@@ -40,16 +55,19 @@ export function computeProfile(answers, followups=[]) {
    for(const tag of tags){scores[tag]+=(rank===0?2:1)/tags.length;if(!evidence[tag].includes(q.id)) evidence[tag].push(q.id);}
   }if(counted)answered++;
  }
+ const rawScores={...scores};const maxima=maximumScores(followups);
+ for(const t of Object.keys(traits))scores[t]=maxima[t]?rawScores[t]/maxima[t]*100:0;
  const ranking=Object.keys(traits).sort((a,b)=>scores[b]-scores[a]||Object.keys(traits).indexOf(a)-Object.keys(traits).indexOf(b));
- const peak=Math.max(...Object.values(scores),1);
- const close=ranking.filter(t=>scores[ranking[0]]-scores[t]<=2);
+ const close=ranking.filter(t=>scores[ranking[0]]-scores[t]<=5);
+ const spread=Math.max(...Object.values(scores))-Math.min(...Object.values(scores));
+ const broad=spread<12;const sparse=answered<6 || scores[ranking[0]]<15;
  const unsure=['q6','q8','q9','q10'].filter(id=>(Array.isArray(answers[id])?answers[id]:[answers[id]]).some(a=>/not sure|still discovering|something else|no idea/i.test(a||'')));
- return {version:'editorial-v1',scores,ranking,evidence,answered,visual:Object.fromEntries(Object.keys(traits).map(t=>[t,Math.round(scores[t]/peak*100)])),uncertainty:{closeTraits:close.length>1?close:[],unsureQuestions:unsure},note:'Interest clues from this questionnaire, not aptitude scores or a validated assessment.'};
+ return {version:'editorial-v2',scores,rawScores,maxima,broad,sparse,ranking,evidence,answered,visual:Object.fromEntries(Object.keys(traits).map(t=>[t,Math.round(scores[t])])),uncertainty:{closeTraits:close.length>1?close:[],unsureQuestions:unsure},note:'Each bar shows points earned relative to that trait’s available points. It is not an ability score or a comparison with other students.'};
 }
 export function selectAreas(profile,grade){
  const picks=profile.ranking.slice(0,3);
  // Stable adjacent direction: the next supported trait, otherwise a clearly labelled experiment.
  const wildcard=profile.ranking.find(t=>!picks.includes(t));
  if(wildcard)picks.push(wildcard);
- return picks.map((t,i)=>({...clusterCatalog[t],trait:t,wildcard:i===picks.length-1&&t===wildcard,evidenceIds:profile.evidence[t].slice(0,3),degrees:Number(grade)>=11?clusterCatalog[t].degrees:[]}));
+ return picks.map((t,i)=>({...clusterCatalog[t],trait:t,exploratory:profile.broad||profile.sparse,wildcard:i===picks.length-1&&t===wildcard,evidenceIds:profile.evidence[t].slice(0,3),degrees:Number(grade)>=11?clusterCatalog[t].degrees:[]}));
 }
