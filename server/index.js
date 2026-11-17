@@ -6,7 +6,7 @@ import { GoogleGenAI } from '@google/genai';
 
 const app = express();
 const port = Number(process.env.PORT || 3001);
-const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+const model = process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
 const apiKey = process.env.GEMINI_API_KEY;
 const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 const here = path.dirname(fileURLToPath(import.meta.url));

@@ -11,7 +11,7 @@ The report is a conversation starter, not an aptitude test or a career predictio
 3. Copy `.env.example` to `.env` and add your Google AI Studio API key.
 4. Run `npm run dev` and open the local URL shown by Vite (usually `http://localhost:5173`).
 
-Without a key, the complete experience runs in demo mode with sample follow-up questions and a sample report. AI generation uses `gemini-2.5-flash` by default; set `GEMINI_MODEL` in `.env` to another model enabled for your AI Studio account.
+Without a key, the complete experience runs in demo mode with sample follow-up questions and a sample report. AI generation uses `gemini-3.5-flash-lite` by default; set `GEMINI_MODEL` in `.env` to another model enabled for your AI Studio account.
 
 ## Production build
 
