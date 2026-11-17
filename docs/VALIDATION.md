@@ -8,7 +8,7 @@ Before student trials, resolve the provider's audience terms and arrange the sch
 
 - Have a teacher or counsellor review every starter option tag in `src/profile.js`.
 - Review whether generated scenario choices are equally appealing and genuinely reflect their labelled interests. Structural validation only ensures there are six unique choices and six trait keys; it cannot establish semantic validity.
-- Review the equal 2-point first choice / 1-point second choice budget. Split-tag options intentionally divide that budget: a first choice tagged R and I gives 1 point to each. A second choice tagged only I also gives 1 point to I. This conserves the total budget and is a design decision, not a validated weighting.
+- The 30 starter questions use unordered multi-select with a shared 2-point budget per question. Review the 2-point first choice / 1-point second choice budget for the ten AI-generated follow-ups. Split-tag options intentionally divide that budget: a first choice tagged R and I gives 1 point to each. A second choice tagged only I also gives 1 point to I. This conserves the total budget and is a design decision, not a validated weighting.
 - Check the opportunity normalisation and broad/sparse thresholds against trial data. Equal theoretical maxima do not remove every form of bias.
 
 ## Usability sessions

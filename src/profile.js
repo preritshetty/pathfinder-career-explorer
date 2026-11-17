@@ -3,29 +3,40 @@ import { questions } from './questions.js';
 export const traits = { R: 'Hands-on', I: 'Investigating', A: 'Creating', S: 'Helping', E: 'Leading', C: 'Organising' };
 // Editorial interest tags, not a validated Holland instrument. Neutral answers earn no points.
 export const optionTags = {
- q1: ['I','RI','A','S','R','EC','RI'], q2: ['IC','I','IR','A','SI','A','R','EC'],
- q3: ['IR','I','EC','A','SI','RI','R'], q4: ['IC','IR','S','I','R','C'],
- q5: ['I','A','I','S','E','ES','RI'], q6: ['IR','I','S','A','RI','EC','R',''],
- q7: ['IR','IS','RI','S','S','E','A','I'], q8: ['I','A','S','ES','S','I','R',''],
- q9: ['IA','R','E','A','I','S','RI',''], q10: ['','','','']
+ q1:['IC','I','IR','A','SI','A','R','EC'],
+ q2:['IC','I','A','I','ES','R'],
+ q3:['','','','',''],
+ q4:['IR','I','A','EC','A','SI','R'],
+ q5:['','','','',''],
+ q6:['R','A','IR','A','R','S','RI'],
+ q7:['IR','I','A','A','E','R','RS'],
+ q8:['IA','I','A','S','EC','R','RI'],
+ q9:['R','IA','A','E','I','S','RI'],
+ q10:['I','E','A','R','SI','RI','A'],
+ q11:['I','A','S','EC','IR','S','R'],
+ q12:['E','I','A','ES','R','C'],
+ q13:['A','I','S','S','E','I','R'],
+ q14:['IC','AS','A','C','I','R','S'],
+ q15:['IR','ES','A','EC','I','S','R'],
+ q16:['','','','',''],q17:['I','IR','S','I','A'],
+ q18:['IR','I','A','S','EC','RI','R'],
+ q19:['','','','',''],q20:['I','I','A','S','E','ES','S'],
+ q21:['IR','IS','E','A','S','ES','I','R','RI',''],
+ q22:['IR','IS','E','A','S','RI','S','I'],
+ q23:['IR','IS','I','E','A','S','ES','R'],
+ q24:['','','','','','','',''],q25:['','','','',''],
+ q26:['IS','RI','S','IR','S','R','S'],
+ q27:['R','I','A','E','S','RI','RS'],
+ q28:['I','A','S','IR','E','SI'],
+ q29:['EC','A','R','ES','S','C','S'],
+ q30:['I','R','A','S','E','RI','']
 };
-const scenarios = [
- ['Your school is planning a fair. Which jobs would you choose?', ['Build the stalls','Test a science idea','Design the posters','Welcome and help visitors','Pitch the fair to sponsors','Plan the schedule']],
- ['A club wants to improve its space. What would you try first?', ['Make a useful model','Find out what is not working','Sketch a new layout','Listen to what members need','Get people excited about a plan','Organise the tasks and supplies']],
- ['You have an hour for a team challenge. Which parts sound best?', ['Build a prototype','Test which idea works','Invent an original approach','Help everyone join in','Present and persuade','Keep track of steps and time']],
- ['A school garden needs help. What would you like to do?', ['Plant and build supports','Study what helps plants grow','Design signs and displays','Show younger students around','Convince others to take part','Track supplies and watering']],
- ['Your first project did not work. What would you do next?', ['Adjust the parts and try again','Compare results to find the cause','Imagine a different design','Discuss it with a teammate','Set a new goal for the team','Write a checklist for another attempt']]
-];
 // A seed controls presentation only; it must never depend on the student's profile.
 export function seededShuffle(items, seed) {
  let n=2166136261;for(const c of String(seed))n=Math.imul(n^c.charCodeAt(0),16777619)>>>0;
  const result=[...items];
  for(let i=result.length-1;i>0;i--){n=(Math.imul(n,1664525)+1013904223)>>>0;const j=n%(i+1);[result[i],result[j]]=[result[j],result[i]];}
  return result;
-}
-// Retained as a developer fixture, never substituted for required AI generation.
-export function questionBank() {
- return scenarios.map(([title, options],i)=>({id:`f${i+1}`,title,purpose:'Try a different situation',type:'ranked',options,optionTraits:Object.keys(traits)}));
 }
 export function maximumScores(followups=[]) {
  const max=Object.fromEntries(Object.keys(traits).map(t=>[t,0]));
@@ -48,11 +59,11 @@ export function computeProfile(answers, followups=[]) {
  for(const q of [...questions,...followups]) {
   const picks=(Array.isArray(answers[q.id])?answers[q.id]:[answers[q.id]]).filter(Boolean);
   const seen=new Set(); let counted=false;
-  for(const [rank,pick] of picks.slice(0,2).entries()) {
+  for(const [rank,pick] of (q.type==='multi'?picks:picks.slice(0,2)).entries()) {
    const idx=q.options.indexOf(pick);if(idx<0||seen.has(pick))continue;seen.add(pick);
    const tags=q.id.startsWith('q')?optionTags[q.id][idx]:q.optionTraits?.[idx];
    if(!tags)continue;counted=true;
-   for(const tag of tags){scores[tag]+=(rank===0?2:1)/tags.length;if(!evidence[tag].includes(q.id)) evidence[tag].push(q.id);}
+   for(const tag of tags){scores[tag]+=(q.type==='multi'?2/picks.length:(rank===0?2:1))/tags.length;if(!evidence[tag].includes(q.id)) evidence[tag].push(q.id);}
   }if(counted)answered++;
  }
  const rawScores={...scores};const maxima=maximumScores(followups);
@@ -60,9 +71,9 @@ export function computeProfile(answers, followups=[]) {
  const ranking=Object.keys(traits).sort((a,b)=>scores[b]-scores[a]||Object.keys(traits).indexOf(a)-Object.keys(traits).indexOf(b));
  const close=ranking.filter(t=>scores[ranking[0]]-scores[t]<=5);
  const spread=Math.max(...Object.values(scores))-Math.min(...Object.values(scores));
- const broad=spread<12;const sparse=answered<6 || scores[ranking[0]]<15;
- const unsure=['q6','q8','q9','q10'].filter(id=>(Array.isArray(answers[id])?answers[id]:[answers[id]]).some(a=>/not sure|still discovering|something else|no idea/i.test(a||'')));
- return {version:'editorial-v2',scores,rawScores,maxima,broad,sparse,ranking,evidence,answered,visual:Object.fromEntries(Object.keys(traits).map(t=>[t,Math.round(scores[t])])),uncertainty:{closeTraits:close.length>1?close:[],unsureQuestions:unsure},note:'Each bar shows points earned relative to that trait’s available points. It is not an ability score or a comparison with other students.'};
+ const broad=spread<12;const sparse=answered<12 || scores[ranking[0]]<15;
+ const unsure=['q21','q25','q30'].filter(id=>(Array.isArray(answers[id])?answers[id]:[answers[id]]).some(a=>/not sure|explore many|not thought|before deciding/i.test(a||'')));
+ return {version:'editorial-v3',scores,rawScores,maxima,broad,sparse,ranking,evidence,answered,visual:Object.fromEntries(Object.keys(traits).map(t=>[t,Math.round(scores[t])])),uncertainty:{closeTraits:close.length>1?close:[],unsureQuestions:unsure},note:'Each bar shows points earned relative to that trait’s available points. It is not an ability score or a comparison with other students.'};
 }
 export function selectAreas(profile,grade){
  const picks=profile.ranking.slice(0,3);

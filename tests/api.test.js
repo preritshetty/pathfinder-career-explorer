@@ -8,18 +8,22 @@ async function withServer(options,work){const server=createApp(options).listen(0
 test('bad payloads, body limit and incomplete reports are rejected',async()=>withServer({generate:fixtureGenerate},async post=>{
  for(const body of [{},{answers:starter(),student:{grade:4}},{answers:[],student:{grade:7}},{answers:{...starter(),q1:['not an option']},student:{grade:7}}])assert.equal((await post('/api/followups',body)).status,400);
  assert.equal((await post('/api/followups','{invalid',true)).status,400);
- assert.equal((await post('/api/followups',{padding:'x'.repeat(40000)})).status,413);
+ assert.equal((await post('/api/followups',{padding:'x'.repeat(110000)})).status,413);
  assert.equal((await post('/api/report',{student:{grade:7},answers:starter()})).status,400);
 }));
 test('signed AI questions, duplicate coalescing, report caching and privacy',async()=>{
  const logs=[],prompts=[];let calls=0;
  await withServer({generate:async(p,s)=>{calls++;prompts.push(p);return fixtureGenerate(p,s);},logger:{warn:x=>logs.push(x)}},async post=>{
   const body={student:{grade:7,name:'PRIVATE_NAME'},answers:{...starter(),q10_detail:'PRIVATE_NOTE'},school:'PRIVATE_SCHOOL'};
-  const [a,b]=await Promise.all([post('/api/followups',body),post('/api/followups',body)]);assert.equal(a.status,200);assert.equal(calls,1);assert.deepEqual(a.data.questions,b.data.questions);assert.equal(a.data.generation.cacheHit,false);assert.equal(b.data.generation.cacheHit,true);assert.equal(a.data.source,'ai');
+  const [a,b]=await Promise.all([post('/api/followups',body),post('/api/followups',body)]);assert.equal(a.status,200);assert.equal(calls,1);assert.deepEqual(a.data.questions,b.data.questions);assert.equal(a.data.generation.cacheHit,false);assert.equal(b.data.generation.cacheHit,true);assert.equal(a.data.source,'ai');assert.equal(a.data.questions.length,10);
   const answers=starter();for(const q of a.data.questions)answers[q.id]=[q.options[0],q.options[1]];
   const request={student:{grade:7},answers,questionToken:a.data.questionToken};
-  const r=await post('/api/report',request);assert.equal(r.status,200);assert.equal(r.data.report.explorationOnly,true);assert.equal(r.data.report.areas.length,4);
+  const r=await post('/api/report',request);assert.equal(r.status,200);assert.equal(r.data.report.explorationOnly,true);assert.equal(r.data.report.areas.length,4);assert.equal(r.data.report.dimensions.length,6);assert.equal(r.data.report.traitDetails.length,6);assert.equal(r.data.evidence.length,40);
   const cached=await post('/api/report',request);assert.deepEqual(cached.data.report,r.data.report);assert.equal(cached.data.generation.cacheHit,true);assert.equal(r.data.generation.cacheHit,false);assert.equal(calls,2);
+  const missingFollowup={...answers};delete missingFollowup.f10;
+  assert.equal((await post('/api/report',{...request,answers:missingFollowup})).status,400);
+  const missingStarter={...answers};delete missingStarter.q30;
+  assert.equal((await post('/api/report',{...request,answers:missingStarter})).status,400);
   assert.equal((await post('/api/report',{...request,questionToken:a.data.questionToken+'invalid'})).status,400);
   assert.equal((await post('/api/report',{...request,answers:{...answers,q1:[questions[0].options[1]]}})).status,400);
   for(const secret of ['PRIVATE_NAME','PRIVATE_NOTE','PRIVATE_SCHOOL']){assert.ok(!prompts.join('').includes(secret));assert.ok(!logs.join('').includes(secret));}

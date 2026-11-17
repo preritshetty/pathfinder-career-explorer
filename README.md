@@ -1,6 +1,6 @@
 # Pathfinder
 
-A student career-exploration prototype for grades 5–12. The existing ten starter questions are followed by five genuinely AI-generated scenarios and an AI-generated report. No built-in report is silently substituted for AI output.
+A student career-exploration prototype for grades 5–12. The 30 starter questions from the supplied Academic Interests and Learning Preferences document are followed by ten genuinely AI-generated scenarios and an AI-generated report. No built-in report is silently substituted for AI output.
 
 ## Run locally: complete setup guide
 
@@ -140,9 +140,9 @@ Do not use `localhost:3001` as the development frontend URL.
    `aiConfigured: true` means a non-placeholder key was loaded. It does **not** prove that Google accepts the key or that quota is available.
 
 2. Return to the frontend, select a grade, and start a survey using fictional answers for your first check.
-3. Answer the ten starter questions. Select a first choice and, where offered, an optional second choice.
-4. Continue after question 10. The app should obtain **five AI-generated follow-up scenarios**. This confirms a real generation request can succeed.
-5. Answer the five follow-ups and select **See my report**. The app should obtain the **AI-generated report**.
+3. Answer the 30 starter questions. Select one or more answers for each, as instructed in the source questionnaire.
+4. Continue after question 30. The app should obtain **ten AI-generated follow-up scenarios**. This confirms a real generation request can succeed.
+5. Answer the ten follow-ups and select **See my report**. The app should obtain the **AI-generated report**.
 6. To export it, select **Print / save PDF**, choose **Save as PDF** in the browser's print dialog, and choose a location. The report automatically includes its collapsed sections when printed, then restores the screen layout.
 
 Repeated identical answers can reuse a recent AI result from the server's cache, so a repeat run may be much faster. This does not mean the app replaced the AI with static questions or a static report.
@@ -179,7 +179,7 @@ Your `.env` remains local and is not replaced by a normal Git update.
 | PDF button does not show a save dialog | Open the frontend URL in a normal desktop browser such as Chrome or Edge, then choose **Save as PDF** in its print dialog. |
 | You see another app on port 5173 | Open the Local URL this project's Vite process printed; it may be 5174. |
 | `EADDRINUSE` on port 3001 | Stop your other copy of this project's API, or follow the custom-port steps below. |
-| Question session expired / starter answers changed | Go back to question 10 and continue again to generate follow-ups for the current answers. |
+| Question session expired / starter answers changed | Go back to question 30 and continue again to generate follow-ups for the current answers. |
 
 **If you need a different backend port:** change `PORT=3002` in `.env`, then start with the matching frontend proxy setting:
 
@@ -225,21 +225,21 @@ Open [http://localhost:3001](http://localhost:3001) (or the port in `.env`). In 
 
 ## AI requirements and error behaviour
 
-Normal completion makes two provider calls: one generates five new scenario questions and six choices per question; one writes the report's summary, explanations, projects, day-in-the-life snapshots, reflections and plan. Both request structured JSON. Every scenario must contain one choice for each of six interest traits. Generated options are checked structurally, independently shuffled using a random seed, and signed by the server; they are not ordered by the starter profile.
+Normal completion makes two provider calls: one generates ten new scenario questions and six choices per question; one writes the report's summary, explanations, projects, day-in-the-life snapshots, reflections and plan. Both request structured JSON mode with explicit shape instructions to avoid Gemini constrained-decoder complexity limits for this larger survey. The server enforces exact counts, six trait options per generated question, the full detailed report schema and valid evidence IDs locally. Every scenario must contain one choice for each of six interest traits. Generated options are checked structurally, independently shuffled using a random seed, and signed by the server; they are not ordered by the starter profile.
 
-Code chooses the career areas; AI explains them. Transient 429/503 failures get one bounded retry. If generation fails or output is invalid, the API returns an explicit retry error and the browser keeps answers. It does not label static text as AI. Duplicate requests share in-flight work and successful results are cached by a SHA-256 digest for 30 minutes (100-entry memory cap). Retries and cache expiration can add requests beyond the normal two. Responses include `generation.provider`, `generation.cacheHit` and `generation.generatedAt` so reused AI content can be distinguished from fresh generation.
+Code chooses the career areas; AI explains them. Transient 429/503 failures get one bounded retry. Optionally set `GEMINI_FALLBACK_MODEL` to another compatible model that your account can access to use it on temporary overload; this is disabled by default and does not change projects or keys. Check that model’s current pricing and quota before enabling it. If generation fails or output is invalid, the API returns an explicit retry error and the browser keeps answers. It does not label static text as AI. Duplicate requests share in-flight work and successful results are cached by a SHA-256 digest for 30 minutes (100-entry memory cap). Retries and cache expiration can add requests beyond the normal two. Responses include `generation.provider`, `generation.cacheHit` and `generation.generatedAt` so reused AI content can be distinguished from fresh generation.
 
 ## Scoring
 
-The original question wording and choices remain in `src/questions.js`. First choices receive 2 points; optional second choices 1. Tags in `src/profile.js` are editorial RIASEC-inspired interests, not a validated Holland instrument. Multi-trait options split their point budget equally. Neutral answers score zero; text notes are not scored.
+The original question wording and choices remain in `src/questions.js`. Starter selections are unordered: each question has a 2-point budget divided equally among the selected options. AI follow-up first choices receive 2 points and optional second choices 1. Tags in `src/profile.js` are editorial RIASEC-inspired interests, not a validated Holland instrument. Multi-trait options split their point budget equally. Neutral answers score zero; text notes are not scored.
 
-Raw earning opportunities differ by trait. Each score is divided by that trait's maximum achievable points across the presented questions, including the two ranked choices. Tests check that all six can reach a normalised 100. Bars use a fixed 0–100 scale rather than stretching the largest score to full width. These are neither percentiles nor ability scores. Stable tie-breaking supports reproducibility; broad/sparse flags prevent small differences being presented as a strong match. Thresholds and tags still require human validation.
+Raw earning opportunities differ by trait. Each score is divided by that trait's maximum achievable points across the 40 presented questions, accounting for multi-select starter questions and ranked follow-ups. Tests check that all six can reach a normalised 100. Bars use a fixed 0–100 scale rather than stretching the largest score to full width. These are neither percentiles nor ability scores. Stable tie-breaking supports reproducibility; broad/sparse flags prevent small differences being presented as a strong match. Thresholds and tags still require human validation.
 
 ## Grade and report presentation
 
-The first ten questions stay the same. AI receives grade-band instructions for the five generated follow-ups and report. Grades 5–7 use simple activity-focused wording; grades 8–10 explore skills/projects; grades 11–12 also get broad study routes. No exam or eligibility claims are made without country/curriculum context.
+All 30 starter questions preserve the wording and options from the supplied questionnaire. AI receives grade-band instructions for the ten generated follow-ups and detailed report. Grades 5–7 use simple activity-focused wording; grades 8–10 explore skills/projects; grades 11–12 also get broad study routes. No exam or eligibility claims are made without country/curriculum context.
 
-The report leads with an overview, one thing to try this week and areas to explore. Younger students see two areas first, with the remaining experiments in a disclosure. Evidence, projects, profile, four-week plan and parent/teacher context can be expanded. Print/save PDF opens the browser print dialog. The report automatically expands all sections for printing and restores their previous state afterwards.
+The detailed report includes an overview and framework, orientation, six RIASEC interpretations, six questionnaire-dimension analyses, learning/working preferences, career awareness, four substantial career dossiers, development actions, a four-week plan, parent/teacher guidance, study-research steps, limitations and a complete 40-answer record. Section navigation supports reading on screen; the complete report is included in print. Content remains grade-appropriate. Aptitude, IQ, EQ and clinical personality measures are explicitly not assessed. Print/save PDF opens the browser print dialog. The report automatically expands all sections for printing and restores their previous state afterwards.
 
 ## Privacy and session handling
 
@@ -249,7 +249,7 @@ The frontend sends selected choices, grade and a signed generated-question token
 
 `.data/session-secret` is automatically created with private filesystem permissions so signed questions stay valid across server restarts. Tokens expire after 24 hours. A changed starter response or grade requires regenerating the follow-ups. Multi-instance hosting would need shared signing and cache configuration.
 
-API bodies are capped at 32 KB. Requests are limited to 30 per IP per minute with no trust in client-supplied forwarding headers. This in-process limiter is for a prototype, not distributed production abuse protection.
+API bodies are capped at 96 KB to accommodate signed ten-question bundles. Requests are limited to 30 per IP per minute with no trust in client-supplied forwarding headers. This in-process limiter is for a prototype, not distributed production abuse protection.
 
 ## Checks
 
@@ -266,5 +266,5 @@ The AI integration remains because AI-generated questions and report are require
 ## API
 
 - `GET /api/health`: configuration status, never the key.
-- `POST /api/followups`: `{student:{grade}, answers}` with the ten starter answers; returns five AI questions and `questionToken`.
-- `POST /api/report`: `{student:{grade}, answers, questionToken}` including all fifteen answers; returns an AI report and computed profile.
+- `POST /api/followups`: `{student:{grade}, answers}` with the 30 starter answers; returns ten AI questions and `questionToken`.
+- `POST /api/report`: `{student:{grade}, answers, questionToken}` including all 40 answers; returns an AI report and computed profile.
