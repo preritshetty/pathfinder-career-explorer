@@ -1,0 +1,16 @@
+import React from 'react';
+import { Compass, Sparkles, ArrowRight, Printer } from 'lucide-react';
+
+export default function Report({ report, evidence, demo, restart }) {
+  return <main className="app-shell report-shell">
+    <header className="topbar"><div className="brand"><span className="brand-icon"><Compass size={18}/></span>pathfinder.</div><button className="text-button print-button" onClick={() => window.print()}><Printer size={16}/> Print / save PDF</button></header>
+    <section className="report-head"><div className="eyebrow"><Sparkles size={15}/> YOUR EXPLORATION MAP</div><h1>{report.headline}</h1><p>{report.summary}</p></section>
+    {demo && <div className="demo-banner">Sample report · AI is not configured</div>}
+    <div className="section-heading"><span className="section-number">01</span><div><h2>Three directions worth exploring</h2><p>Try the activity, then notice what you enjoy.</p></div></div>
+    <div className="enhanced-areas">{report.areas.map((area, i) => <article className="explore-card" key={i}><span className={`area-index c${i}`}>0{i+1}</span><h2>{area.title}</h2><p>{area.why}</p><div className="career-chips">{area.careers.map(c => <span key={c}>{c}</span>)}</div>{area.activity && <div className="project-box"><b>Try a small project</b><p>{area.activity}</p><b>Ask yourself afterwards</b><p>{area.reflection}</p></div>}{area.evidenceIds?.length > 0 && <details><summary>Why this appeared in your report</summary>{area.evidenceIds.map(id => { const item = evidence.find(e => e.id === id); return item && <div className="evidence-item" key={id}><b>{item.question}</b><p>{Array.isArray(item.answer) ? item.answer.join('; ') : item.answer}{item.detail ? ` — ${item.detail}` : ''}</p></div>; })}</details>}</article>)}</div>
+    <section className="report-section"><div className="section-heading"><span className="section-number">02</span><div><h2>Strengths you may be developing</h2><p>Clues from your answers, to explore through experience.</p></div></div><div className="strength-list">{report.strengths.map((s,i) => <div className="strength-item" key={i}><span>✦</span>{s}</div>)}</div></section>
+    {report.plan && <section className="report-section"><div className="section-heading"><span className="section-number">03</span><div><h2>Your next four weeks</h2><p>A little exploration each week can teach you a lot.</p></div></div><div className="plan-grid">{report.plan.map((week,i) => <article key={i}><span className="mini-label">WEEK {i+1}</span><h3>{week.title}</h3><p>{week.action}</p></article>)}</div></section>}
+    <div className="report-grid report-section"><section className="try-card"><h2>Start with one small step</h2><div className="try-list">{report.tryNext.map((s,i) => <div key={i}><span>{i+1}</span><p>{s}</p></div>)}</div></section><section className="conversation-card">{report.uncertainty && <><h3>What is still worth discovering?</h3><p>{report.uncertainty}</p></>}{report.discussionPrompt && <><h3>A conversation to have</h3><p>{report.discussionPrompt}</p></>}</section></div>
+    <p className="report-note">{report.note}</p><div className="report-end"><span>YOUR INTERESTS CAN GROW AND CHANGE.</span><button className="text-button" onClick={restart}>Explore again <ArrowRight size={15}/></button></div>
+  </main>;
+}

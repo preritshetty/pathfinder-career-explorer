@@ -24,3 +24,7 @@ Run `npm run build`, then `npm start`. The Express server serves the built app o
 - `POST /api/report` — creates the final exploration report from all answers.
 
 The API key is only read on the server and must never be added to frontend code or committed to Git.
+
+## Report features
+
+Reports receive the full question-and-answer context, including written interests and generated follow-up question text. Each exploration area includes answer references, example careers, a small project and a reflection question. A four-week plan, discussion prompt and printable layout support continued exploration. JSON output is checked for required sections and valid answer references; this checks structure rather than proving the AI's interpretation is correct.
