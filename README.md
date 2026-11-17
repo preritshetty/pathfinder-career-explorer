@@ -10,7 +10,7 @@ Use Node.js 20+. Run `npm install`, copy `.env.example` to `.env`, add your serv
 
 Normal completion makes two provider calls: one generates five new scenario questions and six choices per question; one writes the report's summary, explanations, projects, day-in-the-life snapshots, reflections and plan. Both request structured JSON. Every scenario must contain one choice for each of six interest traits. Generated options are checked structurally, independently shuffled using a random seed, and signed by the server; they are not ordered by the starter profile.
 
-Code chooses the career areas; AI explains them. Transient 429/503 failures get one bounded retry. If generation fails or output is invalid, the API returns an explicit retry error and the browser keeps answers. It does not label static text as AI. Duplicate requests share in-flight work and successful results are cached by a SHA-256 digest for 30 minutes (100-entry memory cap). Retries and cache expiration can add requests beyond the normal two.
+Code chooses the career areas; AI explains them. Transient 429/503 failures get one bounded retry. If generation fails or output is invalid, the API returns an explicit retry error and the browser keeps answers. It does not label static text as AI. Duplicate requests share in-flight work and successful results are cached by a SHA-256 digest for 30 minutes (100-entry memory cap). Retries and cache expiration can add requests beyond the normal two. Responses include `generation.provider`, `generation.cacheHit` and `generation.generatedAt` so reused AI content can be distinguished from fresh generation.
 
 ## Scoring
 
@@ -22,7 +22,7 @@ Raw earning opportunities differ by trait. Each score is divided by that trait's
 
 The first ten questions stay the same. AI receives grade-band instructions for the five generated follow-ups and report. Grades 5–7 use simple activity-focused wording; grades 8–10 explore skills/projects; grades 11–12 also get broad study routes. No exam or eligibility claims are made without country/curriculum context.
 
-The report leads with an overview, one thing to try this week and areas to explore. Younger students see two areas first, with the remaining experiments in a disclosure. Evidence, projects, profile, four-week plan and parent/teacher context can be expanded. Print/save PDF uses the browser; expand the sections to include in printing.
+The report leads with an overview, one thing to try this week and areas to explore. Younger students see two areas first, with the remaining experiments in a disclosure. Evidence, projects, profile, four-week plan and parent/teacher context can be expanded. Print/save PDF opens the browser print dialog. The report automatically expands all sections for printing and restores their previous state afterwards.
 
 ## Privacy and session handling
 

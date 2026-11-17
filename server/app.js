@@ -32,7 +32,11 @@ export function createApp({generate,secret=randomBytes(32),logger=console,maxReq
  }
  const digest=v=>createHash('sha256').update(JSON.stringify(v)).digest('hex');
  const starterKey=(grade,answers)=>digest({grade,answers:Object.fromEntries(questions.map(q=>[q.id,answers[q.id]]))});
- async function cached(key,work){let item=cache.get(key);if(item&&item.expires>now())return item.promise;const promise=Promise.resolve().then(work);cache.set(key,{expires:now()+30*60000,promise});if(cache.size>100)cache.delete(cache.keys().next().value);try{return await promise;}catch(e){cache.delete(key);throw e;}}
+ async function cached(key,work){
+  let item=cache.get(key);const cacheHit=Boolean(item&&item.expires>now());
+  if(!cacheHit){item={created:now(),expires:now()+30*60000,promise:null};item.promise=Promise.resolve().then(work).then(value=>{item.generatedAt=now();return value;});cache.set(key,item);if(cache.size>100)cache.delete(cache.keys().next().value);}
+  try{return {...await item.promise,generation:{provider:'gemini',cacheHit,generatedAt:new Date(item.generatedAt).toISOString()}};}catch(e){cache.delete(key);throw e;}
+ }
  function fail(stage,error,res){const d=logAiFailure(stage,error,logger);res.status(503).json({error:d.reason,diagnostic:{code:d.code}});}
  app.get('/api/health',(_req,res)=>res.json({ok:true,aiConfigured:Boolean(generate)}));
  app.post('/api/followups',async(req,res)=>{

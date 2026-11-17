@@ -24,5 +24,12 @@ test('complete survey, ranking with keyboard, refresh recovery and AI error retr
  await page.reload();await expect(page.locator('.report-head h1')).toHaveText('A few directions to explore');expect(reportCalls).toBe(2);
  await expect(page.getByText('ONE THING TO TRY THIS WEEK',{exact:true})).toBeVisible();
  scan=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();expect(scan.violations).toEqual([]);
+ await page.evaluate(()=>{window.printChecks={events:0,allExpanded:false};window.addEventListener('beforeprint',()=>{window.printChecks.events++;window.printChecks.allExpanded=[...document.querySelectorAll('.report-shell details')].every(el=>el.open);});});
+ const openBefore=await page.locator('details[open]').count();
+ await page.getByRole('button',{name:'Print / save PDF'}).click();
+ await expect.poll(()=>page.evaluate(()=>window.printChecks.events)).toBeGreaterThan(0);
+ expect(await page.evaluate(()=>window.printChecks.allExpanded)).toBe(true);
+ await page.pdf({path:test.info().outputPath('report.pdf'),format:'A4',printBackground:true,margin:{top:'12mm',right:'12mm',bottom:'12mm',left:'12mm'}});
+ expect(await page.locator('details[open]').count()).toBe(openBefore);
  await page.getByRole('button',{name:'Start over',exact:true}).click();await page.reload();await expect(page.getByRole('heading',{name:/Your next big idea/})).toBeVisible();
 });

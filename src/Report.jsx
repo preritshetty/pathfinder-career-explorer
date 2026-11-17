@@ -1,8 +1,16 @@
-import React from 'react';
+import React, {useEffect, useRef} from 'react';
 import {traits} from './profile.js';
 import {Compass, Sparkles, ArrowRight, Printer} from 'lucide-react';
 
 export default function Report({report,evidence,profile,restart}) {
+ const root=useRef(null);
+ useEffect(()=>{
+  let previous=null;
+  const expand=()=>{if(previous)return;previous=[...root.current.querySelectorAll('details')].map(el=>[el,el.open]);previous.forEach(([el])=>{el.open=true;});};
+  const restore=()=>{previous?.forEach(([el,open])=>{el.open=open;});previous=null;};
+  window.addEventListener('beforeprint',expand);window.addEventListener('afterprint',restore);
+  return ()=>{window.removeEventListener('beforeprint',expand);window.removeEventListener('afterprint',restore);restore();};
+ },[]);
  function areaCard(area,i){return <article className="explore-card" key={area.trait}>
   <span className={`area-index c${i}`}>0{i+1}</span><h2>{area.title}</h2>
   {area.wildcard&&<span className="wildcard-label">Wildcard · a different experiment</span>}
@@ -14,7 +22,7 @@ export default function Report({report,evidence,profile,restart}) {
   }):<p>This is an experiment beyond the interests you selected.</p>}</details>
   <details><summary>Try this area and see what it feels like</summary><div className="project-box"><b>A small project</b><p>{area.activity}</p><b>{report.explorationOnly?'What the activity might feel like':'A day might include'}</b><p>{area.dayInLife}</p><b>Ask yourself</b><p>{area.reflection}</p>{area.degrees.length>0&&<p><b>Possible study routes:</b> {area.degrees.join(', ')}. Check official requirements with a counsellor; they vary by institution and country.</p>}</div></details>
  </article>;}
- return <main className="app-shell report-shell">
+ return <main ref={root} className="app-shell report-shell">
   <header className="topbar"><div className="brand"><span className="brand-icon"><Compass size={18}/></span>pathfinder.</div><button className="text-button print-button" onClick={()=>window.print()}><Printer size={16}/> Print / save PDF</button></header>
   <section className="report-head"><div className="eyebrow"><Sparkles size={15}/> YOUR EXPLORATION MAP</div><h1 tabIndex={-1}>{report.headline}</h1><p>Grades {report.gradeBand} · {report.explorationOnly?'Explore through activities':'Explore interests and possible paths'}</p><p>{report.summary}</p></section>
   {(profile.broad||profile.sparse)&&<p className="flow-notice">{profile.sparse?'There is not enough strong signal to narrow your interests yet.':'Your interests are spread across several areas, with no clear single lead.'} Treat these areas as experiments, not a ranking of your future.</p>}
